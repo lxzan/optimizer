@@ -32,7 +32,9 @@ func (c *BatchProcessor) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				c.handler(c.Clear())
+				if arr := c.Clear(); len(arr) > 0 {
+					c.handler(arr)
+				}
 			case <-c.ctx.Done():
 				return
 			}
@@ -42,5 +44,7 @@ func (c *BatchProcessor) Start() {
 
 func (c *BatchProcessor) Stop() {
 	c.cancel()
-	c.handler(c.Clear())
+	if arr := c.Clear(); len(arr) > 0 {
+		c.handler(arr)
+	}
 }

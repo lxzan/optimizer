@@ -7,7 +7,7 @@ import (
 )
 
 type Limiter struct {
-	*Queue
+	q        *Queue
 	maxNum   int64
 	curNum   int64
 	interval time.Duration
@@ -22,7 +22,7 @@ func NewLimiter(num int64, handler func(doc interface{})) *Limiter {
 	ctx, cancel := context.WithCancel(context.Background())
 	interval := 1000 / num
 	o := &Limiter{
-		Queue:    NewQueue(),
+		q:        NewQueue(),
 		maxNum:   num,
 		curNum:   0,
 		interval: time.Duration(interval) * time.Millisecond,
@@ -33,34 +33,29 @@ func NewLimiter(num int64, handler func(doc interface{})) *Limiter {
 	return o
 }
 
-func (c *Limiter) Start() {
-	go func() {
-		ticker := time.NewTicker(c.interval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if atomic.LoadInt64(&c.curNum) >= c.maxNum {
-					continue
-				}
-				if doc := c.Front(); doc != nil {
-					atomic.AddInt64(&c.curNum, 1)
-					go func() {
-						c.handler(doc)
-						atomic.AddInt64(&c.curNum, -1)
-					}()
-				}
-			case <-c.ctx.Done():
-				return
-			}
+func (c *Limiter) Push(eles ...interface{}) {
+	for _, ele := range eles {
+		c.q.Push(ele)
+		if atomic.LoadInt64(&c.curNum) < c.maxNum {
+			c.do()
 		}
-	}()
+	}
+}
+
+func (c *Limiter) do() {
+	if doc := c.q.Front(); doc != nil {
+		atomic.AddInt64(&c.curNum, 1)
+		go func() {
+			c.handler(doc)
+			atomic.AddInt64(&c.curNum, -1)
+			c.do()
+		}()
+	}
 }
 
 func (c *Limiter) Stop() {
 	c.cancel()
-	docs := c.Clear()
+	docs := c.q.Clear()
 	for _, item := range docs {
 		c.handler(item)
 	}
