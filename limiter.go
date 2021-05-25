@@ -11,12 +11,12 @@ type Limiter struct {
 	handler func(opt interface{})
 }
 
-// num: max concurrent number per second, <=1000
+// maxNum: max concurrent number per second, <=1000
 // interval: interval of checking new task
-func NewLimiter(num int64, handler func(doc interface{})) *Limiter {
+func NewLimiter(maxNum int64, handler func(doc interface{})) *Limiter {
 	o := &Limiter{
 		q:       NewQueue(),
-		maxNum:  num,
+		maxNum:  maxNum,
 		curNum:  0,
 		handler: handler,
 	}
@@ -37,8 +37,9 @@ func (c *Limiter) do() {
 		atomic.AddInt64(&c.curNum, 1)
 		go func() {
 			c.handler(doc)
-			atomic.AddInt64(&c.curNum, -1)
-			c.do()
+			if atomic.AddInt64(&c.curNum, -1) < c.maxNum {
+				c.do()
+			}
 		}()
 	}
 }
