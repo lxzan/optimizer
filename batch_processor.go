@@ -24,27 +24,27 @@ func NewBatchProcessor(interval time.Duration, handler func(docs []interface{}))
 	}
 }
 
-func (c *BatchProcessor) Start() {
+func (this *BatchProcessor) Start() {
 	go func() {
-		ticker := time.NewTicker(c.interval)
+		ticker := time.NewTicker(this.interval)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				if arr := c.Clear(); len(arr) > 0 {
-					c.handler(arr)
+				if arr := this.Clear(); len(arr) > 0 {
+					this.handler(arr)
 				}
-			case <-c.ctx.Done():
+			case <-this.ctx.Done():
 				return
 			}
 		}
 	}()
 }
 
-func (c *BatchProcessor) Stop() {
-	c.cancel()
-	if arr := c.Clear(); len(arr) > 0 {
-		c.handler(arr)
+func (this *BatchProcessor) Stop() {
+	this.cancel()
+	if arr := this.Clear(); len(arr) > 0 {
+		this.handler(arr)
 	}
 }

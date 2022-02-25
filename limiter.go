@@ -22,32 +22,32 @@ func NewLimiter(maxNum int64, handler func(doc interface{})) *Limiter {
 	return o
 }
 
-func (c *Limiter) Push(eles ...interface{}) {
+func (this *Limiter) Push(eles ...interface{}) {
 	for _, ele := range eles {
-		c.q.Push(ele)
-		if atomic.LoadInt64(&c.curNum) < c.maxNum {
-			c.do()
+		this.q.Push(ele)
+		if atomic.LoadInt64(&this.curNum) < this.maxNum {
+			this.do()
 		}
 	}
 }
 
-func (c *Limiter) do() {
-	var item = c.q.Front()
+func (this *Limiter) do() {
+	var item = this.q.Front()
 	if item == nil {
 		return
 	}
 
-	atomic.AddInt64(&c.curNum, 1)
+	atomic.AddInt64(&this.curNum, 1)
 	go func(doc interface{}) {
-		c.handler(doc)
-		atomic.AddInt64(&c.curNum, -1)
-		c.do()
+		this.handler(doc)
+		atomic.AddInt64(&this.curNum, -1)
+		this.do()
 	}(item)
 }
 
-func (c *Limiter) Stop() {
-	docs := c.q.Clear()
+func (this *Limiter) Stop() {
+	docs := this.q.Clear()
 	for _, item := range docs {
-		c.handler(item)
+		this.handler(item)
 	}
 }
