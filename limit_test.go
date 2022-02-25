@@ -14,13 +14,14 @@ func TestNewLimiter(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	})
 
-	for i := 0; i < 40; i++ {
+	for i := 1; i <= 30; i++ {
 		r.Push(i)
 	}
-	time.Sleep(3 * time.Second)
 
-	for i := 40; i < 80; i++ {
+	time.Sleep(time.Second)
+	for i := 31; i <= 60; i++ {
 		r.Push(i)
 	}
+
 	time.Sleep(3 * time.Second)
 }

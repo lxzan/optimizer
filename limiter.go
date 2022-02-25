@@ -1,34 +1,23 @@
 package optimizer
 
 import (
-	"context"
 	"sync/atomic"
-	"time"
 )
 
 type Limiter struct {
-	q        *Queue
-	maxNum   int64
-	curNum   int64
-	interval time.Duration
-	ctx      context.Context
-	cancel   context.CancelFunc
-	handler  func(opt interface{})
+	q       *Queue // task queue
+	maxNum  int64  // maxNum: max concurrent coroutine
+	curNum  int64  // curNum: current concurrent coroutine
+	handler func(opt interface{})
 }
 
-// num: max concurrent number per second, <=1000
-// interval: interval of checking new task
-func NewLimiter(num int64, handler func(doc interface{})) *Limiter {
-	ctx, cancel := context.WithCancel(context.Background())
-	interval := 1000 / num
+// maxNum: max concurrent coroutine
+func NewLimiter(maxNum int64, handler func(doc interface{})) *Limiter {
 	o := &Limiter{
-		q:        NewQueue(),
-		maxNum:   num,
-		curNum:   0,
-		interval: time.Duration(interval) * time.Millisecond,
-		ctx:      ctx,
-		cancel:   cancel,
-		handler:  handler,
+		q:       NewQueue(),
+		maxNum:  maxNum,
+		curNum:  0,
+		handler: handler,
 	}
 	return o
 }
@@ -43,18 +32,20 @@ func (c *Limiter) Push(eles ...interface{}) {
 }
 
 func (c *Limiter) do() {
-	if doc := c.q.Front(); doc != nil {
-		atomic.AddInt64(&c.curNum, 1)
-		go func() {
-			c.handler(doc)
-			atomic.AddInt64(&c.curNum, -1)
-			c.do()
-		}()
+	var item = c.q.Front()
+	if item == nil {
+		return
 	}
+
+	atomic.AddInt64(&c.curNum, 1)
+	go func(doc interface{}) {
+		c.handler(doc)
+		atomic.AddInt64(&c.curNum, -1)
+		c.do()
+	}(item)
 }
 
 func (c *Limiter) Stop() {
-	c.cancel()
 	docs := c.q.Clear()
 	for _, item := range docs {
 		c.handler(item)
