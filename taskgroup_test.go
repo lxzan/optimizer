@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestNewLimiter(t *testing.T) {
+func TestNewTaskGroup(t *testing.T) {
 	as := assert.New(t)
 	t.Run("success", func(t *testing.T) {
 		mu := sync.Mutex{}

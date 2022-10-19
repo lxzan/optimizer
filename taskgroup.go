@@ -57,16 +57,13 @@ func (c *TaskGroup) do() {
 }
 
 func (c *TaskGroup) StartAndWait() {
-	var length = atomic.LoadInt64(&c.taskTotal)
-	if length == 0 {
-		go func() {
-			c.signal <- true
-		}()
+	var taskTotal = atomic.LoadInt64(&c.taskTotal)
+	if taskTotal == 0 {
 		return
 	}
 
-	var co = min(int(c.concurrency), int(length))
-	for i := 0; i < co; i++ {
+	var co = min(c.concurrency, taskTotal)
+	for i := int64(0); i < co; i++ {
 		c.do()
 	}
 
