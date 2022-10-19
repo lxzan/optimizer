@@ -13,37 +13,37 @@ func NewQueue() *Queue {
 	}
 }
 
-func (this *Queue) Push(eles ...interface{}) {
-	this.Lock()
-	this.data = append(this.data, eles...)
-	this.Unlock()
+func (c *Queue) Push(eles ...interface{}) {
+	c.Lock()
+	c.data = append(c.data, eles...)
+	c.Unlock()
 }
 
-func (this *Queue) Front() interface{} {
-	this.Lock()
-	defer this.Unlock()
+func (c *Queue) Front() interface{} {
+	c.Lock()
+	defer c.Unlock()
 
-	if n := len(this.data); n == 0 {
+	if n := len(c.data); n == 0 {
 		return nil
 	} else {
-		var result = this.data[0]
-		this.data = this.data[1:]
+		var result = c.data[0]
+		c.data = c.data[1:]
 		return result
 	}
 }
 
-func (this *Queue) Len() int {
-	this.Lock()
-	length := len(this.data)
-	this.Unlock()
+func (c *Queue) Len() int {
+	c.Lock()
+	length := len(c.data)
+	c.Unlock()
 	return length
 }
 
 // clear queue, return all data
-func (this *Queue) Clear() []interface{} {
-	this.Lock()
-	data := this.data
-	this.data = make([]interface{}, 0)
-	this.Unlock()
+func (c *Queue) Clear() []interface{} {
+	c.Lock()
+	data := c.data
+	c.data = make([]interface{}, 0)
+	c.Unlock()
 	return data
 }
