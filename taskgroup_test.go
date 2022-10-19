@@ -1,6 +1,7 @@
 package optimizer
 
 import (
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestNewLimiter(t *testing.T) {
 	as := assert.New(t)
-	t.Run("", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		mu := sync.Mutex{}
 		listA := make([]uint8, 0)
 		listB := make([]uint8, 0)
@@ -24,5 +25,16 @@ func TestNewLimiter(t *testing.T) {
 		}
 		ctl.StartAndWait()
 		as.ElementsMatch(listA, listB)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		ctl := NewTaskGroup(8, func(ctl *TaskGroup, options interface{}) error {
+			return errors.New("test")
+		})
+		ctl.Push(1, 2, 3)
+		ctl.StartAndWait()
+		err := ctl.Err()
+		as.Error(err)
+		as.Equal("test: test: test", err.Error())
 	})
 }
