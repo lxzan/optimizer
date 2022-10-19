@@ -7,44 +7,43 @@ import (
 
 type BatchProcessor struct {
 	*Queue
-	interval time.Duration
-	ctx      context.Context
-	cancel   context.CancelFunc
-	handler  func([]interface{})
+	interval  time.Duration
+	ctx       context.Context
+	cancel    context.CancelFunc
+	OnMessage func(docs []interface{})
 }
 
-func NewBatchProcessor(interval time.Duration, handler func(docs []interface{})) *BatchProcessor {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewBatchProcessor(ctx context.Context, interval time.Duration) *BatchProcessor {
+	cctx, cancel := context.WithCancel(ctx)
 	return &BatchProcessor{
 		Queue:    NewQueue(),
 		interval: interval,
-		ctx:      ctx,
+		ctx:      cctx,
 		cancel:   cancel,
-		handler:  handler,
 	}
 }
 
-func (this *BatchProcessor) Start() {
+func (c *BatchProcessor) Start() {
 	go func() {
-		ticker := time.NewTicker(this.interval)
+		ticker := time.NewTicker(c.interval)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				if arr := this.Clear(); len(arr) > 0 {
-					this.handler(arr)
+				if arr := c.Clear(); len(arr) > 0 {
+					c.OnMessage(arr)
 				}
-			case <-this.ctx.Done():
+			case <-c.ctx.Done():
 				return
 			}
 		}
 	}()
 }
 
-func (this *BatchProcessor) Stop() {
-	this.cancel()
-	if arr := this.Clear(); len(arr) > 0 {
-		this.handler(arr)
+func (c *BatchProcessor) Stop() {
+	c.cancel()
+	if arr := c.Clear(); len(arr) > 0 {
+		c.OnMessage(arr)
 	}
 }

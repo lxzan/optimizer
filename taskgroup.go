@@ -6,27 +6,26 @@ import (
 )
 
 type TaskGroup struct {
-	collector *errorCollector // error collector
-	q         *Queue          // task queue
-	goroutine int64           // max concurrent coroutine
-	taskDone  int64           // completed tasks
-	taskTotal int64           // total tasks
-	handler   func(ctl *TaskGroup, options interface{}) error
-	signal    chan bool
+	collector   *errorCollector // error collector
+	q           *Queue          // task queue
+	concurrency int64           // max concurrent coroutine
+	taskDone    int64           // completed tasks
+	taskTotal   int64           // total tasks
+	signal      chan bool
+	OnMessage   func(options interface{}) error
 }
 
-// goroutine: max concurrent coroutine
-func NewTaskGroup(goroutine int64, handler func(ctl *TaskGroup, options interface{}) error) *TaskGroup {
-	if goroutine <= 0 {
-		goroutine = 8
+// concurrency: max concurrent coroutine
+func NewTaskGroup(concurrency int64) *TaskGroup {
+	if concurrency <= 0 {
+		concurrency = 8
 	}
 	o := &TaskGroup{
-		collector: &errorCollector{mu: &sync.RWMutex{}},
-		q:         NewQueue(),
-		goroutine: goroutine,
-		taskDone:  0,
-		signal:    make(chan bool),
-		handler:   handler,
+		collector:   &errorCollector{mu: &sync.RWMutex{}},
+		q:           NewQueue(),
+		concurrency: concurrency,
+		taskDone:    0,
+		signal:      make(chan bool),
 	}
 	return o
 }
@@ -48,10 +47,8 @@ func (c *TaskGroup) do() {
 
 	if item := c.q.Front(); item != nil {
 		go func(doc interface{}) {
-			if err := c.handler(c, doc); err != nil {
+			if err := c.OnMessage(doc); err != nil {
 				c.collector.MarkFailedWithError(err)
-			} else {
-				c.collector.MarkSucceed()
 			}
 			atomic.AddInt64(&c.taskDone, 1)
 			c.do()
@@ -68,7 +65,7 @@ func (c *TaskGroup) StartAndWait() {
 		return
 	}
 
-	var co = min(int(c.goroutine), int(length))
+	var co = min(int(c.concurrency), int(length))
 	for i := 0; i < co; i++ {
 		c.do()
 	}
