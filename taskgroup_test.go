@@ -1,10 +1,12 @@
 package optimizer
 
 import (
+	"context"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestNewTaskGroup(t *testing.T) {
@@ -13,7 +15,7 @@ func TestNewTaskGroup(t *testing.T) {
 		mu := sync.Mutex{}
 		listA := make([]uint8, 0)
 		listB := make([]uint8, 0)
-		ctl := NewTaskGroup(8)
+		ctl := NewTaskGroup(context.Background(), 8)
 		for i := 0; i < 100; i++ {
 			ctl.Push(uint8(i))
 			listB = append(listB, uint8(i))
@@ -29,7 +31,7 @@ func TestNewTaskGroup(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-		ctl := NewTaskGroup(8)
+		ctl := NewTaskGroup(context.Background(), 8)
 		ctl.Push(1, 2, 3)
 		ctl.OnMessage = func(options interface{}) error {
 			return errors.New("test")
@@ -38,5 +40,23 @@ func TestNewTaskGroup(t *testing.T) {
 		err := ctl.Err()
 		as.Error(err)
 		as.Equal("test: test: test", err.Error())
+	})
+
+	t.Run("timeout", func(t *testing.T) {
+		var list = make([]int, 0)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		ctl := NewTaskGroup(ctx, 2)
+		ctl.Push(1, 3, 5, 7, 9)
+		ctl.OnMessage = func(options interface{}) error {
+			ctl.Lock()
+			list = append(list, options.(int))
+			ctl.Unlock()
+			time.Sleep(2 * time.Second)
+			return nil
+		}
+		ctl.StartAndWait()
+		as.NoError(ctl.Err())
+		as.ElementsMatch(list, []int{1, 3})
 	})
 }

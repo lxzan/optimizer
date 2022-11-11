@@ -1,11 +1,14 @@
 package optimizer
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 )
 
 type TaskGroup struct {
+	sync.Mutex
+	ctx         context.Context // context
 	collector   *errorCollector // error collector
 	q           *Queue          // task queue
 	concurrency int64           // max concurrent coroutine
@@ -16,11 +19,12 @@ type TaskGroup struct {
 }
 
 // concurrency: max concurrent coroutine
-func NewTaskGroup(concurrency int64) *TaskGroup {
+func NewTaskGroup(ctx context.Context, concurrency int64) *TaskGroup {
 	if concurrency <= 0 {
 		concurrency = 8
 	}
 	o := &TaskGroup{
+		ctx:         ctx,
 		collector:   &errorCollector{mu: &sync.RWMutex{}},
 		q:           NewQueue(),
 		concurrency: concurrency,
@@ -28,6 +32,15 @@ func NewTaskGroup(concurrency int64) *TaskGroup {
 		signal:      make(chan bool),
 	}
 	return o
+}
+
+func (c *TaskGroup) isCanceled() bool {
+	select {
+	case <-c.ctx.Done():
+		return true
+	default:
+		return false
+	}
 }
 
 func (c *TaskGroup) Len() int {
@@ -47,8 +60,10 @@ func (c *TaskGroup) do() {
 
 	if item := c.q.Front(); item != nil {
 		go func(doc interface{}) {
-			if err := c.OnMessage(doc); err != nil {
-				c.collector.MarkFailedWithError(err)
+			if !c.isCanceled() {
+				if err := c.OnMessage(doc); err != nil {
+					c.collector.MarkFailedWithError(err)
+				}
 			}
 			atomic.AddInt64(&c.taskDone, 1)
 			c.do()
