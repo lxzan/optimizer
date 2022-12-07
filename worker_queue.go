@@ -18,12 +18,12 @@ type (
 	}
 
 	Job struct {
-		Do   func(args interface{}) error
 		Args interface{}
+		Do   func(args interface{}) error
 	}
 )
 
-// NewWorker 创建一个工作队列
+// NewWorkerQueue 创建一个工作队列
 // concurrency 最大并发协程数量
 func NewWorkerQueue(ctx context.Context, concurrency int64) *WorkerQueue {
 	return &WorkerQueue{
@@ -34,7 +34,7 @@ func NewWorkerQueue(ctx context.Context, concurrency int64) *WorkerQueue {
 	}
 }
 
-// Push 追加任务
+// Push 追加任务, 有资源空闲的话会立即执行
 func (c *WorkerQueue) Push(jobs ...Job) {
 	for i, _ := range jobs {
 		c.q.Push(jobs[i])
@@ -74,7 +74,7 @@ func (c *WorkerQueue) callOnError(err error) {
 // Stop 优雅退出
 // interval 检查并发数是否为0的周期
 // timeout 超时时间
-func (c *WorkerQueue) Stop(interval, timeout time.Duration) {
+func (c *WorkerQueue) StopAndWait(interval, timeout time.Duration) {
 	ticker := time.NewTicker(interval)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
