@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 )
 
-type TaskGroup struct {
+type WorkerGroup struct {
 	sync.Mutex
 	ctx         context.Context // context
 	collector   *errorCollector // error collector
@@ -18,13 +18,13 @@ type TaskGroup struct {
 	OnMessage   func(options interface{}) error
 }
 
-// NewTaskGroup 新建一个任务集
+// NewWorkerGroup 新建一个任务集
 // concurrency: 最大并发协程数量
-func NewTaskGroup(ctx context.Context, concurrency int64) *TaskGroup {
+func NewWorkerGroup(ctx context.Context, concurrency int64) *WorkerGroup {
 	if concurrency <= 0 {
 		concurrency = 8
 	}
-	o := &TaskGroup{
+	o := &WorkerGroup{
 		ctx:         ctx,
 		collector:   &errorCollector{mu: &sync.RWMutex{}},
 		q:           NewQueue(),
@@ -35,27 +35,18 @@ func NewTaskGroup(ctx context.Context, concurrency int64) *TaskGroup {
 	return o
 }
 
-func (c *TaskGroup) isCanceled() bool {
-	select {
-	case <-c.ctx.Done():
-		return true
-	default:
-		return false
-	}
-}
-
 // Len 获取队列中剩余任务数量
-func (c *TaskGroup) Len() int {
+func (c *WorkerGroup) Len() int {
 	return c.q.Len()
 }
 
 // Push 往任务队列中追加任务
-func (c *TaskGroup) Push(eles ...interface{}) {
+func (c *WorkerGroup) Push(eles ...interface{}) {
 	atomic.AddInt64(&c.taskTotal, int64(len(eles)))
 	c.q.Push(eles...)
 }
 
-func (c *TaskGroup) do() {
+func (c *WorkerGroup) do() {
 	if atomic.LoadInt64(&c.taskDone) == atomic.LoadInt64(&c.taskTotal) {
 		c.signal <- true
 		return
@@ -63,7 +54,7 @@ func (c *TaskGroup) do() {
 
 	if item := c.q.Front(); item != nil {
 		go func(doc interface{}) {
-			if !c.isCanceled() {
+			if !isCanceled(c.ctx) {
 				if err := c.OnMessage(doc); err != nil {
 					c.collector.MarkFailedWithError(err)
 				} else {
@@ -77,7 +68,7 @@ func (c *TaskGroup) do() {
 }
 
 // StartAndWait 启动并等待所有任务执行完成
-func (c *TaskGroup) StartAndWait() {
+func (c *WorkerGroup) StartAndWait() {
 	var taskTotal = atomic.LoadInt64(&c.taskTotal)
 	if taskTotal == 0 {
 		return
@@ -92,6 +83,6 @@ func (c *TaskGroup) StartAndWait() {
 }
 
 // Err 获取错误返回
-func (c *TaskGroup) Err() error {
+func (c *WorkerGroup) Err() error {
 	return c.collector.Err()
 }

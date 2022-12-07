@@ -15,7 +15,7 @@ func TestNewTaskGroup(t *testing.T) {
 		mu := sync.Mutex{}
 		listA := make([]uint8, 0)
 		listB := make([]uint8, 0)
-		ctl := NewTaskGroup(context.Background(), 8)
+		ctl := NewWorkerGroup(context.Background(), 8)
 		for i := 0; i < 100; i++ {
 			ctl.Push(uint8(i))
 			listB = append(listB, uint8(i))
@@ -34,7 +34,7 @@ func TestNewTaskGroup(t *testing.T) {
 		var list = make([]int, 0)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		ctl := NewTaskGroup(ctx, 2)
+		ctl := NewWorkerGroup(ctx, 2)
 		ctl.Push(1, 3, 5, 7, 9)
 		ctl.OnMessage = func(options interface{}) error {
 			ctl.Lock()
@@ -49,7 +49,7 @@ func TestNewTaskGroup(t *testing.T) {
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		cc := NewTaskGroup(context.Background(), 8)
+		cc := NewWorkerGroup(context.Background(), 8)
 		cc.OnMessage = func(options interface{}) error {
 			return nil
 		}
@@ -58,7 +58,7 @@ func TestNewTaskGroup(t *testing.T) {
 	})
 
 	t.Run("one task", func(t *testing.T) {
-		cc := NewTaskGroup(context.Background(), 8)
+		cc := NewWorkerGroup(context.Background(), 8)
 		cc.Push(1)
 		cc.OnMessage = func(options interface{}) error {
 			return nil
@@ -68,7 +68,7 @@ func TestNewTaskGroup(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-		cc := NewTaskGroup(context.Background(), 8)
+		cc := NewWorkerGroup(context.Background(), 8)
 		cc.Push(1, 2)
 		cc.OnMessage = func(options interface{}) error {
 			var v = options.(int)
