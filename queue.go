@@ -39,8 +39,8 @@ func (c *Queue) Len() int {
 	return length
 }
 
-// clear queue, return all data
-func (c *Queue) Clear() []interface{} {
+// All 返回所有数据并清空队列
+func (c *Queue) All() []interface{} {
 	c.Lock()
 	data := c.data
 	c.data = make([]interface{}, 0)

@@ -31,7 +31,7 @@ func (c *BatchProcessor) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				if arr := c.Clear(); len(arr) > 0 {
+				if arr := c.All(); len(arr) > 0 {
 					c.OnMessage(arr)
 				}
 			case <-c.ctx.Done():
@@ -43,7 +43,7 @@ func (c *BatchProcessor) Start() {
 
 func (c *BatchProcessor) Stop() {
 	c.cancel()
-	if arr := c.Clear(); len(arr) > 0 {
+	if arr := c.All(); len(arr) > 0 {
 		c.OnMessage(arr)
 	}
 }
