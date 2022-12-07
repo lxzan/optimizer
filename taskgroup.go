@@ -18,7 +18,8 @@ type TaskGroup struct {
 	OnMessage   func(options interface{}) error
 }
 
-// concurrency: max concurrent coroutine
+// NewTaskGroup 新建一个任务集
+// concurrency: 最大并发协程数量
 func NewTaskGroup(ctx context.Context, concurrency int64) *TaskGroup {
 	if concurrency <= 0 {
 		concurrency = 8
@@ -43,10 +44,12 @@ func (c *TaskGroup) isCanceled() bool {
 	}
 }
 
+// Len 获取队列中剩余任务数量
 func (c *TaskGroup) Len() int {
 	return c.q.Len()
 }
 
+// Push 往任务队列中追加任务
 func (c *TaskGroup) Push(eles ...interface{}) {
 	atomic.AddInt64(&c.taskTotal, int64(len(eles)))
 	c.q.Push(eles...)
@@ -73,6 +76,7 @@ func (c *TaskGroup) do() {
 	}
 }
 
+// StartAndWait 启动并等待所有任务执行完成
 func (c *TaskGroup) StartAndWait() {
 	var taskTotal = atomic.LoadInt64(&c.taskTotal)
 	if taskTotal == 0 {
@@ -87,6 +91,7 @@ func (c *TaskGroup) StartAndWait() {
 	<-c.signal
 }
 
+// Err 获取错误返回
 func (c *TaskGroup) Err() error {
 	return c.collector.Err()
 }
