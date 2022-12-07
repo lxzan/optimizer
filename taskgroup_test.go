@@ -30,18 +30,6 @@ func TestNewTaskGroup(t *testing.T) {
 		as.ElementsMatch(listA, listB)
 	})
 
-	t.Run("error", func(t *testing.T) {
-		ctl := NewTaskGroup(context.Background(), 8)
-		ctl.Push(1, 2, 3)
-		ctl.OnMessage = func(options interface{}) error {
-			return errors.New("test")
-		}
-		ctl.StartAndWait()
-		err := ctl.Err()
-		as.Error(err)
-		as.Equal("test: test: test", err.Error())
-	})
-
 	t.Run("timeout", func(t *testing.T) {
 		var list = make([]int, 0)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -58,5 +46,38 @@ func TestNewTaskGroup(t *testing.T) {
 		ctl.StartAndWait()
 		as.NoError(ctl.Err())
 		as.ElementsMatch(list, []int{1, 3})
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		cc := NewTaskGroup(context.Background(), 8)
+		cc.OnMessage = func(options interface{}) error {
+			return nil
+		}
+		cc.StartAndWait()
+		as.NoError(cc.Err())
+	})
+
+	t.Run("one task", func(t *testing.T) {
+		cc := NewTaskGroup(context.Background(), 8)
+		cc.Push(1)
+		cc.OnMessage = func(options interface{}) error {
+			return nil
+		}
+		cc.StartAndWait()
+		as.NoError(cc.Err())
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cc := NewTaskGroup(context.Background(), 8)
+		cc.Push(1, 2)
+		cc.OnMessage = func(options interface{}) error {
+			var v = options.(int)
+			if v%2 == 1 {
+				return errors.New("test1")
+			}
+			return errors.New("test2")
+		}
+		cc.StartAndWait()
+		as.Error(cc.Err())
 	})
 }

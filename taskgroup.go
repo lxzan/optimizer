@@ -63,6 +63,8 @@ func (c *TaskGroup) do() {
 			if !c.isCanceled() {
 				if err := c.OnMessage(doc); err != nil {
 					c.collector.MarkFailedWithError(err)
+				} else {
+					c.collector.MarkSucceed()
 				}
 			}
 			atomic.AddInt64(&c.taskDone, 1)

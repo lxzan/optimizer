@@ -1,6 +1,7 @@
 package optimizer
 
 import (
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"sync"
 )
@@ -21,22 +22,14 @@ func (c *errorCollector) MarkSucceed() {
 func (c *errorCollector) MarkFailedWithError(err error) {
 	c.mu.Lock()
 	c.failedNum++
-	if c.err == nil {
-		c.err = errors.WithStack(err)
-	} else {
-		c.err = errors.Wrap(c.err, err.Error())
-	}
+	c.err = multierror.Append(c.err, err)
 	c.mu.Unlock()
 }
 
 func (c *errorCollector) MarkFailedWithMessage(msg string) {
 	c.mu.Lock()
 	c.failedNum++
-	if c.err == nil {
-		c.err = errors.New(msg)
-	} else {
-		c.err = errors.Wrap(c.err, msg)
-	}
+	c.err = multierror.Append(c.err, errors.New(msg))
 	c.mu.Unlock()
 }
 
