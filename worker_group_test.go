@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -79,5 +80,19 @@ func TestNewTaskGroup(t *testing.T) {
 		}
 		cc.StartAndWait()
 		as.Error(cc.Err())
+	})
+
+	t.Run("100 task", func(t *testing.T) {
+		sum := int64(0)
+		w := NewWorkerGroup(context.Background(), 8)
+		for i := int64(1); i <= 100; i++ {
+			w.Push(i)
+		}
+		w.OnMessage = func(options interface{}) error {
+			atomic.AddInt64(&sum, options.(int64))
+			return nil
+		}
+		w.StartAndWait()
+		as.Equal(sum, int64(5050))
 	})
 }

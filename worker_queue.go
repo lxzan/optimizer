@@ -72,10 +72,9 @@ func (c *WorkerQueue) callOnError(err error) {
 }
 
 // Stop 优雅退出
-// interval 检查并发数是否为0的周期
 // timeout 超时时间
-func (c *WorkerQueue) StopAndWait(interval, timeout time.Duration) {
-	ticker := time.NewTicker(interval)
+func (c *WorkerQueue) StopAndWait(timeout time.Duration) {
+	ticker := time.NewTicker(50 * time.Millisecond)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

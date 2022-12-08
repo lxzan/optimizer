@@ -73,7 +73,9 @@ import (
 func main() {
 	sum := int64(0)
 	w := optimizer.NewWorkerGroup(context.Background(), 8)
-	w.Push(int64(1), int64(3), int64(5))
+	for i := int64(1); i <= 100; i++ {
+		w.Push(i)
+	}
 	w.OnMessage = func(options interface{}) error {
 		atomic.AddInt64(&sum, options.(int64))
 		return nil
@@ -84,5 +86,5 @@ func main() {
 ```
 
 ```
-sum=9
+sum=5050
 ```
